@@ -1,0 +1,138 @@
+- hosts: app,h2
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install OpenJDK 11
+      apt:
+        name: openjdk-11-jdk
+        state: present
+
+    - name: Set Java 11 as default (java)
+      alternatives:
+        name: java
+        path: /usr/lib/jvm/java-11-openjdk-amd64/bin/java
+
+    - name: Set Java 11 as default (javac)
+      alternatives:
+        name: javac
+        path: /usr/lib/jvm/java-11-openjdk-amd64/bin/javac
+
+- hosts: app
+  become: yes
+  tasks:
+    - name: Install Tomcat
+      apt:
+        name: tomcat9
+        state: present
+
+- hosts: h2
+  become: yes
+  tasks:
+    - name: Create H2 directory
+      file:
+        path: /opt/h2
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Download H2 jar
+      get_url:
+        url: https://repo1.maven.org/maven2/com/h2database/h2/1.4.200/h2-1.4.200.jar
+        dest: /opt/h2/h2.jar
+        mode: '0644'
+
+    - name: Create systemd service for H2
+      copy:
+        dest: /etc/systemd/system/h2.service
+        content: |
+          [Unit]
+          Description=H2 Database Server
+          After=network.target
+
+          [Service]
+          Type=simple
+          ExecStart=/usr/bin/java -cp /opt/h2/h2.jar org.h2.tools.Server -baseDir /opt/h2 -tcp -tcpAllowOthers -tcpPort 9092 -web -webAllowOthers -webPort 8082
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+
+          - name: Reload systemd
+          systemd:
+          daemon_reload: yes
+
+          - name: Restart H2
+            systemd:
+              name: h2
+              enabled: yes
+              state: restarted
+
+          - name: Wait for H2 to be available
+            wait_for:
+              port: 9092
+              host: 127.0.0.1
+              delay: 2
+              timeout: 30
+
+          - name: Create H2 database via TCP
+          command: >
+            /usr/bin/java -cp /opt/h2/h2.jar org.h2.tools.Shell
+            -url jdbc:h2:tcp://localhost:9092/./jpadb
+            -user sa
+            -password ""
+            -sql "CREATE TABLE IF NOT EXISTS TEST(ID INT)"
+          ignore_errors: yes
+
+- hosts: app
+  become: yes
+  tasks:
+    - name: Install git
+      apt:
+        name: git
+        state: present
+
+    - name: Install unzip
+      apt:
+        name: unzip
+        state: present
+
+    - name: Install wget
+      apt:
+        name: wget
+        state: present
+
+    - name: Clone project repository (as vagrant)
+      become_user: vagrant
+      git:
+        repo: https://bitbucket.org/pssmatos/tut-basic-gradle.git
+        dest: /home/vagrant/tut-basic-gradle
+        update: yes
+        force: yes
+
+    - name: Fix datasource URL
+      replace:
+          path: /home/vagrant/tut-basic-gradle/src/main/resources/application.properties
+          regexp: 'spring.datasource.url=.*'
+          replace: 'spring.datasource.url=jdbc:h2:tcp://192.168.56.11:9092//opt/h2/jpadb'
+
+    - name: Build the application with wrapper
+      become_user: vagrant
+      shell: ./gradlew clean build --no-daemon --console=plain
+      args:
+        chdir: /home/vagrant/tut-basic-gradle
+
+    - name: Copy WAR to Tomcat webapps
+      copy:
+        src: /home/vagrant/tut-basic-gradle/build/libs/basic-0.0.1-SNAPSHOT.war
+        dest: /var/lib/tomcat9/webapps/basic-0.0.1-SNAPSHOT.war
+        remote_src: yes
+        mode: '0644'
+
+    - name: Restart Tomcat
+      systemd:
+        name: tomcat9
+        state: restarted
