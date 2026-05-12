@@ -6,7 +6,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
@@ -37,6 +36,11 @@ pipeline {
                     sh './gradlew test'
                 }
             }
+            post {
+                always {
+                    junit 'CE2/basic/build/test-results/test/*.xml'
+                }
+            }
         }
 
         stage('Javadoc') {
@@ -51,6 +55,20 @@ pipeline {
             steps {
                 archiveArtifacts artifacts: 'CE2/basic/build/libs/*.war', fingerprint: true
                 archiveArtifacts artifacts: 'CE2/basic/build/docs/javadoc/**', fingerprint: true
+            }
+        }
+
+        stage('Publish Image') {
+            steps {
+                script {
+                    dir('CE2/basic') {
+                        def customImage = docker.build("gui1251991lemes/ce2-basic:${env.BUILD_NUMBER}")
+                        docker.withRegistry('', 'dockerhub') {
+                            customImage.push()
+                            customImage.push('latest')
+                        }
+                    }
+                }
             }
         }
     }
