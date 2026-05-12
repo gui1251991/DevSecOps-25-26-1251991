@@ -38,7 +38,7 @@ pipeline {
             }
             post {
                 always {
-                    junit 'CE2/basic/build/test-results/test/*.xml'
+                    junit allowEmptyResults: true, testResults: 'CE2/basic/build/test-results/test/*.xml'
                 }
             }
         }
@@ -60,10 +60,15 @@ pipeline {
 
         stage('Publish Image') {
             steps {
-                script {
-                    dir('CE2/basic') {
-                        def customImage = docker.build("gui1251991lemes/ce2-basic:${env.BUILD_NUMBER}")
+                dir('CE2/basic') {
+                    sh '''
+                        apt-get update
+                        apt-get install -y docker.io
+                        docker --version
+                    '''
+                    script {
                         docker.withRegistry('', 'dockerhub') {
+                            def customImage = docker.build("gui1251991lemes/ce2-basic:${env.BUILD_NUMBER}")
                             customImage.push()
                             customImage.push('latest')
                         }
