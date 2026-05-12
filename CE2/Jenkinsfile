@@ -1,40 +1,35 @@
 pipeline {
-
-    // Executa o pipeline dentro de um container Docker
-    agent {
-        docker {
-            // Usa Gradle com Java 11 (compatível com o projeto)
-            image 'gradle:7.4.1-jdk11'
-        }
-    }
+    agent any
 
     stages {
 
-        // Obtém o código do repositório
         stage('Checkout') {
             steps {
-                git 'https://bitbucket.org/pssmatos/gradle_basic_demo'
+                checkout scm
             }
         }
 
-        // Compila a aplicação (sem testes)
         stage('Assemble') {
             steps {
-                sh './gradlew assemble'
+                dir('CE2/gradle-basic-demo') {
+                    sh 'chmod +x gradlew'
+                    sh './gradlew assemble'
+                }
             }
         }
 
-        // Executa os testes unitários
         stage('Test') {
             steps {
-                sh './gradlew test'
+                dir('CE2/gradle-basic-demo') {
+                    sh './gradlew test'
+                }
+                junit allowEmptyResults: true, testResults: 'CE2/gradle-basic-demo/build/test-results/test/*.xml'
             }
         }
 
-        // Guarda os artefatos gerados (.jar)
         stage('Archive') {
             steps {
-                archiveArtifacts 'build/libs/*.jar'
+                archiveArtifacts 'CE2/gradle-basic-demo/build/libs/*.jar'
             }
         }
     }
