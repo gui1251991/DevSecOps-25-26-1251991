@@ -15,15 +15,17 @@ pipeline {
 
         stage('Java Version') {
             steps {
-                sh 'java -version'
-                sh './gradlew --version'
+                dir('CE2/basic') {
+                    sh 'java -version'
+                    sh 'chmod +x gradlew'
+                    sh './gradlew --version'
+                }
             }
         }
 
         stage('Assemble') {
             steps {
                 dir('CE2/basic') {
-                    sh 'chmod +x gradlew'
                     sh './gradlew assemble'
                 }
             }
@@ -34,7 +36,6 @@ pipeline {
                 dir('CE2/basic') {
                     sh './gradlew test'
                 }
-                junit allowEmptyResults: true, testResults: 'CE2/basic/build/test-results/test/*.xml'
             }
         }
 
@@ -48,7 +49,8 @@ pipeline {
 
         stage('Archive') {
             steps {
-                archiveArtifacts 'CE2/basic/build/libs/*.war'
+                archiveArtifacts artifacts: 'CE2/basic/build/libs/*.jar', fingerprint: true
+                archiveArtifacts artifacts: 'CE2/basic/build/docs/javadoc/**', fingerprint: true
             }
         }
     }
