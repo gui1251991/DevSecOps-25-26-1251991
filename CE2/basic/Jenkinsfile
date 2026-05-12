@@ -49,7 +49,7 @@ pipeline {
 
         stage('Archive') {
             steps {
-                archiveArtifacts artifacts: 'CE2/basic/build/libs/*.jar', fingerprint: true
+                archiveArtifacts artifacts: 'CE2/basic/build/libs/*.war', fingerprint: true
                 archiveArtifacts artifacts: 'CE2/basic/build/docs/javadoc/**', fingerprint: true
             }
         }
