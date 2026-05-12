@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Assemble') {
+            steps {
+                dir('CE2/basic') {
+                    sh 'chmod +x gradlew'
+                    sh './gradlew assemble'
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                dir('CE2/basic') {
+                    sh './gradlew test'
+                }
+                junit allowEmptyResults: true, testResults: 'CE2/basic/build/test-results/test/*.xml'
+            }
+        }
+
+        stage('Javadoc') {
+            steps {
+                dir('CE2/basic') {
+                    sh './gradlew javadoc'
+                }
+            }
+        }
+
+        stage('Archive') {
+            steps {
+                archiveArtifacts 'CE2/basic/build/libs/*.war'
+            }
+        }
+    }
+}
