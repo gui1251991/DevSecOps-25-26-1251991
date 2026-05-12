@@ -1,0 +1,55 @@
+plugins {
+	id 'org.springframework.boot' version '2.2.5.RELEASE'
+	id 'io.spring.dependency-management' version '1.0.9.RELEASE'
+	id 'java'
+	id 'org.siouan.frontend-jdk11' version '6.0.0'
+	id 'war'
+}
+
+group = 'pt.isep.devops'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-data-rest'
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	runtimeOnly 'com.h2database:h2'
+	testImplementation('org.springframework.boot:spring-boot-starter-test') {
+		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+	}
+	// To support war file for deploying to tomcat
+	providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+}
+
+test {
+	useJUnitPlatform()
+}
+
+// Configuration of the node.js
+// See: https://github.com/subiron/gradle-frontend-plugin
+// See also: https://github.com/eirslett/frontend-maven-plugin
+frontend {
+	nodeVersion = '12.13.1'
+
+	System.out.println(String.format("I am running on: %s(%s)", System.getProperty("os.arch"), System.getProperty("os.name")))
+
+	if (System.getProperty("os.arch").equals("aarch64")) {
+	    if (System.getProperty("os.name").equals("Linux")) {
+		nodeDistributionUrlPathPattern = 'vVERSION/node-vVERSION-linux-arm64.TYPE'
+	    }
+
+	    if (System.getProperty("os.name").equals("Mac OS X")) {
+		nodeDistributionUrlPathPattern.set("vVERSION/node-vVERSION-darwin-x64.TYPE")
+	    }
+	}
+    // See 'scripts' section in your 'package.json file'
+    //cleanScript = 'run clean'
+    //assembleScript = 'run assemble'
+	assembleScript = 'run webpack'
+    //checkScript = 'run check'
+}
