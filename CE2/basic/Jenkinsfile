@@ -1,9 +1,8 @@
 pipeline {
-    agent any
-
-    environment {
-        JAVA_HOME = '/opt/java/openjdk'
-        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+    agent {
+        docker {
+            image 'gradle:7.4.2-jdk11'
+        }
     }
 
     stages {
@@ -17,6 +16,7 @@ pipeline {
         stage('Java Version') {
             steps {
                 sh 'java -version'
+                sh './gradlew --version'
             }
         }
 
